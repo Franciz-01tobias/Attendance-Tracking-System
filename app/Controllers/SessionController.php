@@ -31,15 +31,20 @@ final class SessionController
             Response::json(['ok' => false, 'message' => 'Session not found'], 404);
         }
 
-        if ($user['role'] === 'lecturer' && (int) $session['lecturer_user_id'] !== (int) $user['id']) {
-            Response::json(['ok' => false, 'message' => 'Forbidden'], 403);
+        if ($user['role'] === 'lecturer') {
+            $localMatch = (int) ($session['lecturer_user_id'] ?? 0) > 0
+                && (int) ($session['lecturer_user_id'] ?? 0) === (int) $user['id'];
+            $marazoneMatch = ($session['lecturer_marazone_user_id'] ?? null) !== null
+                && ($user['marazone_user_id'] ?? null) !== null
+                && (string) $session['lecturer_marazone_user_id'] === (string) $user['marazone_user_id'];
+
+            if (!$localMatch && !$marazoneMatch) {
+                Response::json(['ok' => false, 'message' => 'Forbidden'], 403);
+            }
         }
+
         if ($user['role'] === 'cr') {
-            $assigned = (new AssignmentRepository())->isCrAssigned(
-                (int) $user['id'],
-                (int) $session['section_id'],
-                (string) $session['session_date']
-            );
+            $assigned = (new AssignmentRepository())->isCrAssignedForSession((int) $user['id'], $session);
             if (!$assigned) {
                 Response::json(['ok' => false, 'message' => 'Forbidden'], 403);
             }
@@ -47,7 +52,7 @@ final class SessionController
 
         $submissionRepo = new SubmissionRepository();
         $submission = $submissionRepo->findBySessionId($sessionId);
-        $students = (new StudentRepository())->listBySection((int) $session['section_id']);
+        $students = (new StudentRepository())->listForSession($session);
         $items = $submission ? (new AttendanceItemRepository())->listBySubmission((int) $submission['id']) : [];
         $signedSheet = $submission ? (new SignedSheetRepository())->activeBySubmission((int) $submission['id']) : null;
 

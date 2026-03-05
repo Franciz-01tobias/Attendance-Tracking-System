@@ -8,7 +8,7 @@ final class AttendanceItemRepository extends BaseRepository
 {
     public function bulkInsert(int $submissionId, array $items, int $updatedBy): void
     {
-        $sql = 'INSERT INTO attendance_items (submission_id, student_id, status, note, updated_by, created_at, updated_at) VALUES (:sub_id, :student_id, :status, :note, :updated_by, :created_at, :updated_at)';
+        $sql = 'INSERT INTO ats_attendance_items (submission_id, student_id, status, note, updated_by, created_at, updated_at) VALUES (:sub_id, :student_id, :status, :note, :updated_by, :created_at, :updated_at)';
         $stmt = $this->db()->prepare($sql);
 
         foreach ($items as $item) {
@@ -27,11 +27,16 @@ final class AttendanceItemRepository extends BaseRepository
     public function listBySubmission(int $submissionId): array
     {
         $sql = <<<'SQL'
-SELECT i.*, st.full_name, st.reg_no
-FROM attendance_items i
-JOIN students st ON st.id = i.student_id
+SELECT
+    i.*,
+    COALESCE(NULLIF(CONCAT_WS(' ', mu.first_name, NULLIF(mu.middle_name, ''), mu.last_name), ''), ls.full_name, CONCAT('Student ', i.student_id)) AS full_name,
+    COALESCE(ms.admission_no, ms.form4_reg_no, ls.reg_no, CAST(i.student_id AS CHAR)) AS reg_no
+FROM ats_attendance_items i
+LEFT JOIN students ms ON ms.student_id = i.student_id
+LEFT JOIN users mu ON mu.user_id = ms.user_id
+LEFT JOIN ats_students ls ON ls.id = i.student_id
 WHERE i.submission_id = :id
-ORDER BY st.full_name ASC
+ORDER BY full_name ASC
 SQL;
         $stmt = $this->db()->prepare($sql);
         $stmt->execute(['id' => $submissionId]);
@@ -41,7 +46,7 @@ SQL;
 
     public function updateItem(int $itemId, string $status, ?string $note, int $updatedBy): void
     {
-        $sql = 'UPDATE attendance_items SET status = :status, note = :note, updated_by = :updated_by, updated_at = :updated_at WHERE id = :id';
+        $sql = 'UPDATE ats_attendance_items SET status = :status, note = :note, updated_by = :updated_by, updated_at = :updated_at WHERE id = :id';
         $stmt = $this->db()->prepare($sql);
         $stmt->execute([
             'id' => $itemId,
@@ -54,7 +59,7 @@ SQL;
 
     public function countBySubmission(int $submissionId): int
     {
-        $stmt = $this->db()->prepare('SELECT COUNT(*) AS c FROM attendance_items WHERE submission_id = :id');
+        $stmt = $this->db()->prepare('SELECT COUNT(*) AS c FROM ats_attendance_items WHERE submission_id = :id');
         $stmt->execute(['id' => $submissionId]);
         $row = $stmt->fetch();
 

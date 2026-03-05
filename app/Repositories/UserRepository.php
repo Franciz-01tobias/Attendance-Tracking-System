@@ -8,7 +8,7 @@ final class UserRepository extends BaseRepository
 {
     public function findByEmail(string $email): ?array
     {
-        $sql = 'SELECT * FROM users WHERE email = :email AND active = 1 LIMIT 1';
+        $sql = 'SELECT * FROM ats_users WHERE email = :email AND active = 1 LIMIT 1';
         $stmt = $this->db()->prepare($sql);
         $stmt->execute(['email' => $email]);
         $row = $stmt->fetch();
@@ -18,7 +18,7 @@ final class UserRepository extends BaseRepository
 
     public function findById(int $id): ?array
     {
-        $sql = 'SELECT * FROM users WHERE id = :id LIMIT 1';
+        $sql = 'SELECT * FROM ats_users WHERE id = :id LIMIT 1';
         $stmt = $this->db()->prepare($sql);
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
@@ -28,7 +28,7 @@ final class UserRepository extends BaseRepository
 
     public function updateLastLogin(int $id): void
     {
-        $sql = 'UPDATE users SET last_login_at = :logged_at WHERE id = :id';
+        $sql = 'UPDATE ats_users SET last_login_at = :logged_at WHERE id = :id';
         $stmt = $this->db()->prepare($sql);
         $stmt->execute([
             'id' => $id,

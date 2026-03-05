@@ -38,38 +38,37 @@ final class AttendanceSubmissionService
             throw new RuntimeException('Session not found');
         }
 
-        $isAssigned = $this->assignments->isCrAssigned(
-            (int) $user['id'],
-            (int) $session['section_id'],
-            (string) $session['session_date']
-        );
+        $isAssigned = $this->assignments->isCrAssignedForSession((int) $user['id'], $session);
         if (!$isAssigned) {
-            throw new RuntimeException('CR is not assigned to this section/session');
+            throw new RuntimeException('CR is not assigned to this class/session');
         }
 
         if ($this->submissions->findBySessionId($sessionId)) {
             throw new RuntimeException('Submission already exists for this session');
         }
 
-        $sectionStudents = $this->students->listBySection((int) $session['section_id']);
-        $expectedCount = count($sectionStudents);
+        $rosterStudents = $this->students->listForSession($session);
+        $expectedCount = count($rosterStudents);
         if ($expectedCount === 0) {
-            throw new RuntimeException('No active students in section');
+            throw new RuntimeException('No active students found for this assigned class');
         }
 
         if (count($items) !== $expectedCount) {
-            throw new RuntimeException('Attendance must include every student in the section');
+            throw new RuntimeException('Attendance must include every student in the class roster');
         }
 
-        $expectedIds = array_map(static fn(array $s): int => (int) $s['id'], $sectionStudents);
+        $expectedIds = array_map(static fn(array $s): int => (int) $s['id'], $rosterStudents);
         sort($expectedIds);
 
         $providedIds = array_map(static fn(array $i): int => (int) ($i['student_id'] ?? 0), $items);
         sort($providedIds);
 
         if ($expectedIds !== $providedIds) {
-            throw new RuntimeException('Attendance list does not match section roster');
+            throw new RuntimeException('Attendance list does not match assigned class roster');
         }
+
+        $lecturerUserId = $this->nullableInt($session['lecturer_user_id'] ?? null);
+        $lecturerMarazoneUserId = $this->nullableInt($session['lecturer_marazone_user_id'] ?? null);
 
         $db = \App\Core\Database::default();
         $db->beginTransaction();
@@ -87,7 +86,8 @@ final class AttendanceSubmissionService
                 'submitted_at' => $submittedAt,
                 'status' => SubmissionStatus::PENDING,
                 'deadline_at' => $deadline,
-                'lecturer_user_id' => (int) $session['lecturer_user_id'],
+                'lecturer_user_id' => $lecturerUserId,
+                'lecturer_marazone_user_id' => $lecturerMarazoneUserId,
                 'signed_sheet_status' => SignedSheetStatus::MISSING,
             ]);
 
@@ -110,5 +110,14 @@ final class AttendanceSubmissionService
             $db->rollBack();
             throw $e;
         }
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (int) $value;
     }
 }

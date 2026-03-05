@@ -46,7 +46,7 @@ final class MirrorSyncService implements MirrorSyncServiceInterface
     private function syncStudents(array $rows): int
     {
         $sql = <<<'SQL'
-INSERT INTO mz_students (source_id, reg_no, full_name, email, section_source_id, active, row_checksum, synced_at)
+INSERT INTO ats_mz_students (source_id, reg_no, full_name, email, section_source_id, active, row_checksum, synced_at)
 VALUES (:source_id, :reg_no, :full_name, :email, :section_source_id, :active, :row_checksum, :synced_at)
 ON DUPLICATE KEY UPDATE
 reg_no = VALUES(reg_no),
@@ -66,7 +66,7 @@ SQL;
                 'section_source_id' => (string) ($row['section_id'] ?? ''),
                 'active' => (int) ($row['active'] ?? 1),
             ];
-            $payload['row_checksum'] = hash('sha256', json_encode($payload));
+            $payload['row_checksum'] = hash('sha256', (string) json_encode($payload));
             $payload['synced_at'] = now_utc();
             return $payload;
         });
@@ -75,7 +75,7 @@ SQL;
     private function syncLecturers(array $rows): int
     {
         $sql = <<<'SQL'
-INSERT INTO mz_lecturers (source_id, full_name, email, active, row_checksum, synced_at)
+INSERT INTO ats_mz_lecturers (source_id, full_name, email, active, row_checksum, synced_at)
 VALUES (:source_id, :full_name, :email, :active, :row_checksum, :synced_at)
 ON DUPLICATE KEY UPDATE
 full_name = VALUES(full_name),
@@ -91,7 +91,7 @@ SQL;
                 'email' => $row['email'] ?? null,
                 'active' => (int) ($row['active'] ?? 1),
             ];
-            $payload['row_checksum'] = hash('sha256', json_encode($payload));
+            $payload['row_checksum'] = hash('sha256', (string) json_encode($payload));
             $payload['synced_at'] = now_utc();
             return $payload;
         });
@@ -100,7 +100,7 @@ SQL;
     private function syncCourses(array $rows): int
     {
         $sql = <<<'SQL'
-INSERT INTO mz_courses (source_id, code, title, lecturer_source_id, active, row_checksum, synced_at)
+INSERT INTO ats_mz_courses (source_id, code, title, lecturer_source_id, active, row_checksum, synced_at)
 VALUES (:source_id, :code, :title, :lecturer_source_id, :active, :row_checksum, :synced_at)
 ON DUPLICATE KEY UPDATE
 code = VALUES(code),
@@ -115,10 +115,10 @@ SQL;
                 'source_id' => (string) ($row['id'] ?? ''),
                 'code' => (string) ($row['code'] ?? ''),
                 'title' => (string) ($row['title'] ?? ''),
-                'lecturer_source_id' => (string) ($row['lecturer_id'] ?? ''),
+                'lecturer_source_id' => isset($row['lecturer_id']) ? (string) $row['lecturer_id'] : null,
                 'active' => (int) ($row['active'] ?? 1),
             ];
-            $payload['row_checksum'] = hash('sha256', json_encode($payload));
+            $payload['row_checksum'] = hash('sha256', (string) json_encode($payload));
             $payload['synced_at'] = now_utc();
             return $payload;
         });
@@ -127,7 +127,7 @@ SQL;
     private function syncSections(array $rows): int
     {
         $sql = <<<'SQL'
-INSERT INTO mz_sections (source_id, course_source_id, name, semester, academic_year, row_checksum, synced_at)
+INSERT INTO ats_mz_sections (source_id, course_source_id, name, semester, academic_year, row_checksum, synced_at)
 VALUES (:source_id, :course_source_id, :name, :semester, :academic_year, :row_checksum, :synced_at)
 ON DUPLICATE KEY UPDATE
 course_source_id = VALUES(course_source_id),
@@ -145,7 +145,7 @@ SQL;
                 'semester' => (string) ($row['semester'] ?? ''),
                 'academic_year' => (string) ($row['academic_year'] ?? ''),
             ];
-            $payload['row_checksum'] = hash('sha256', json_encode($payload));
+            $payload['row_checksum'] = hash('sha256', (string) json_encode($payload));
             $payload['synced_at'] = now_utc();
             return $payload;
         });
@@ -154,7 +154,7 @@ SQL;
     private function syncTimetableSlots(array $rows): int
     {
         $sql = <<<'SQL'
-INSERT INTO mz_timetable_slots (source_id, section_source_id, day_of_week, start_time, end_time, room, active, row_checksum, synced_at)
+INSERT INTO ats_mz_timetable_slots (source_id, section_source_id, day_of_week, start_time, end_time, room, active, row_checksum, synced_at)
 VALUES (:source_id, :section_source_id, :day_of_week, :start_time, :end_time, :room, :active, :row_checksum, :synced_at)
 ON DUPLICATE KEY UPDATE
 section_source_id = VALUES(section_source_id),
@@ -177,7 +177,7 @@ SQL;
                 'room' => (string) ($row['room'] ?? ''),
                 'active' => (int) ($row['active'] ?? 1),
             ];
-            $payload['row_checksum'] = hash('sha256', json_encode($payload));
+            $payload['row_checksum'] = hash('sha256', (string) json_encode($payload));
             $payload['synced_at'] = now_utc();
             return $payload;
         });

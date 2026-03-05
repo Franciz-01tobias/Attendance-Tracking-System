@@ -15,13 +15,18 @@ SELECT
     sub.*,
     sess.section_id,
     sess.session_date,
-    sec.name AS section_name,
-    c.title AS course_title,
-    c.lecturer_user_id
-FROM attendance_submissions sub
-JOIN sessions sess ON sess.id = sub.session_id
-JOIN sections sec ON sec.id = sess.section_id
-JOIN courses c ON c.id = sec.course_id
+    sess.course_id,
+    sess.stage_no,
+    sess.qualification_level_id,
+    sess.semester_id,
+    COALESCE(sec.name, CONCAT('Stage ', COALESCE(CAST(sess.stage_no AS CHAR), '?'), ' / Semester ', COALESCE(CAST(sess.semester_id AS CHAR), '?'))) AS section_name,
+    COALESCE(c.course_name, ac.title, CONCAT('Course ', sess.course_id)) AS course_title,
+    ac.lecturer_user_id
+FROM ats_attendance_submissions sub
+JOIN ats_sessions sess ON sess.id = sub.session_id
+LEFT JOIN ats_sections sec ON sec.id = sess.section_id
+LEFT JOIN courses c ON c.course_id = sess.course_id
+LEFT JOIN ats_courses ac ON ac.id = sec.course_id
 WHERE sub.id = :id
 LIMIT 1
 SQL;
@@ -34,7 +39,7 @@ SQL;
 
     public function findBySessionId(int $sessionId): ?array
     {
-        $stmt = $this->db()->prepare('SELECT * FROM attendance_submissions WHERE session_id = :sid LIMIT 1');
+        $stmt = $this->db()->prepare('SELECT * FROM ats_attendance_submissions WHERE session_id = :sid LIMIT 1');
         $stmt->execute(['sid' => $sessionId]);
         $row = $stmt->fetch();
 
@@ -44,10 +49,10 @@ SQL;
     public function create(array $payload): int
     {
         $sql = <<<'SQL'
-INSERT INTO attendance_submissions
-(session_id, cr_user_id, teaching_declared_at, declaration_text, submitted_at, status, deadline_at, lecturer_user_id, signed_sheet_status)
+INSERT INTO ats_attendance_submissions
+(session_id, cr_user_id, teaching_declared_at, declaration_text, submitted_at, status, deadline_at, lecturer_user_id, lecturer_marazone_user_id, signed_sheet_status)
 VALUES
-(:session_id, :cr_user_id, :teaching_declared_at, :declaration_text, :submitted_at, :status, :deadline_at, :lecturer_user_id, :signed_sheet_status)
+(:session_id, :cr_user_id, :teaching_declared_at, :declaration_text, :submitted_at, :status, :deadline_at, :lecturer_user_id, :lecturer_marazone_user_id, :signed_sheet_status)
 SQL;
 
         $stmt = $this->db()->prepare($sql);
@@ -59,7 +64,7 @@ SQL;
     public function updateStatusDecision(int $id, string $status, ?string $comment, ?string $decidedAt): void
     {
         $sql = <<<'SQL'
-UPDATE attendance_submissions
+UPDATE ats_attendance_submissions
 SET status = :status,
     lecturer_comment = :comment,
     lecturer_decision_at = :decided_at,
@@ -78,7 +83,7 @@ SQL;
 
     public function setSignedSheetStatus(int $id, string $status): void
     {
-        $stmt = $this->db()->prepare('UPDATE attendance_submissions SET signed_sheet_status = :s, updated_at = :u WHERE id = :id');
+        $stmt = $this->db()->prepare('UPDATE ats_attendance_submissions SET signed_sheet_status = :s, updated_at = :u WHERE id = :id');
         $stmt->execute([
             'id' => $id,
             's' => $status,
@@ -89,10 +94,10 @@ SQL;
     public function pendingOverdue(string $now): array
     {
         $sql = <<<'SQL'
-SELECT * FROM attendance_submissions
+SELECT * FROM ats_attendance_submissions
 WHERE status = :pending
   AND deadline_at < :now
-  AND id NOT IN (SELECT submission_id FROM escalations WHERE resolved_at IS NULL)
+  AND id NOT IN (SELECT submission_id FROM ats_escalations WHERE resolved_at IS NULL)
 SQL;
         $stmt = $this->db()->prepare($sql);
         $stmt->execute([

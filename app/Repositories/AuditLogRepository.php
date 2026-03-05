@@ -17,7 +17,7 @@ final class AuditLogRepository extends BaseRepository
         string $userAgent
     ): void {
         $sql = <<<'SQL'
-INSERT INTO audit_logs
+INSERT INTO ats_audit_logs
 (actor_user_id, entity_type, entity_id, action, before_json, after_json, ip, user_agent, created_at)
 VALUES
 (:actor_user_id, :entity_type, :entity_id, :action, :before_json, :after_json, :ip, :user_agent, :created_at)

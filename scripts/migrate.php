@@ -8,12 +8,12 @@ require_once __DIR__ . '/../bootstrap/helpers.php';
 use App\Core\Database;
 
 $pdo = Database::default();
-$pdo->exec('CREATE TABLE IF NOT EXISTS schema_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) NOT NULL UNIQUE, applied_at DATETIME NOT NULL)');
+$pdo->exec('CREATE TABLE IF NOT EXISTS ats_schema_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) NOT NULL UNIQUE, applied_at DATETIME NOT NULL)');
 
 $files = glob(__DIR__ . '/../database/migrations/*_up.sql') ?: [];
 sort($files);
 
-$stmt = $pdo->query('SELECT migration_name FROM schema_migrations');
+$stmt = $pdo->query('SELECT migration_name FROM ats_schema_migrations');
 $applied = $stmt ? array_column($stmt->fetchAll(), 'migration_name') : [];
 
 foreach ($files as $file) {
@@ -28,14 +28,15 @@ foreach ($files as $file) {
         throw new RuntimeException('Cannot read migration: ' . $name);
     }
 
-    $pdo->beginTransaction();
     try {
+        // MySQL DDL statements auto-commit, so do not wrap full file execution in transaction.
         $pdo->exec($sql);
-        $ins = $pdo->prepare('INSERT INTO schema_migrations (migration_name, applied_at) VALUES (:name, :at)');
+        $ins = $pdo->prepare('INSERT INTO ats_schema_migrations (migration_name, applied_at) VALUES (:name, :at)');
         $ins->execute(['name' => $name, 'at' => now_utc()]);
-        $pdo->commit();
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }

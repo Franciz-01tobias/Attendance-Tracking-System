@@ -5,7 +5,7 @@ $submissionId = $submission['id'] ?? null;
 ?>
 <section class="panel">
     <h2><?= h((string) $session['course_title']) ?> - <?= h((string) $session['section_name']) ?></h2>
-    <p><?= h((string) $session['session_date']) ?> | <?= h((string) $session['starts_at']) ?> - <?= h((string) $session['ends_at']) ?> | Room <?= h((string) $session['room']) ?></p>
+    <p><?= h((string) $session['session_date']) ?> | <?= h((string) $session['starts_at']) ?> - <?= h((string) $session['ends_at']) ?> | Room <?= h((string) ($session['room_name'] ?? $session['room'] ?? 'TBA')) ?></p>
     <?php if ($submission): ?>
         <span class="pill status-<?= h((string) $submission['status']) ?>">Submission: <?= h((string) $submission['status']) ?></span>
         <span class="pill">Signed sheet: <?= h((string) $submission['signed_sheet_status']) ?></span>

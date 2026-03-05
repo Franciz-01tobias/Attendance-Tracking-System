@@ -10,7 +10,7 @@ use RuntimeException;
 
 final class AuthService
 {
-    public function __construct(private readonly UserRepository $users = new UserRepository())
+    public function __construct(private readonly UserRepository $ats_users = new UserRepository())
     {
     }
 
@@ -18,7 +18,7 @@ final class AuthService
     {
         $this->throttle($email);
 
-        $user = $this->users->findByEmail($email);
+        $user = $this->ats_users->findByEmail($email);
         if (!$user || !password_verify($password, $user['password_hash'])) {
             $_SESSION['login_attempts'][$email] = ($_SESSION['login_attempts'][$email] ?? 0) + 1;
             throw new RuntimeException('Invalid credentials');
@@ -26,7 +26,7 @@ final class AuthService
 
         $_SESSION['login_attempts'][$email] = 0;
         Auth::login($user);
-        $this->users->updateLastLogin((int) $user['id']);
+        $this->ats_users->updateLastLogin((int) $user['id']);
 
         return $user;
     }
